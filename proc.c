@@ -536,6 +536,5 @@ procdump(void)
 int
 clone(void *stack, int size)
 {
-  cprintf("%d %d", stack, size);
-  return 1;
+  return size;
 }
