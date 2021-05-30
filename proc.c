@@ -97,7 +97,8 @@ found:
     return 0;
   }
   sp = p->kstack + KSTACKSIZE;
-
+  
+  //*(p->numberOfThreads) = 1;
   // Leave room for trap frame.
   sp -= sizeof *p->tf;
   p->tf = (struct trapframe*)sp;
@@ -235,13 +236,17 @@ exit(void)
     panic("init exiting");
 
   // Close all open files.
-  for(fd = 0; fd < NOFILE; fd++){
-    if(curproc->ofile[fd]){
-      fileclose(curproc->ofile[fd]);
-      curproc->ofile[fd] = 0;
+  
+  //*(curproc->numberOfThreads) = *(curproc->numberOfThreads) - 1;
+  //if(*(curproc->numberOfThreads) == 0){
+    for(fd = 0; fd < NOFILE; fd++){
+      if(curproc->ofile[fd]){
+        fileclose(curproc->ofile[fd]);
+        curproc->ofile[fd] = 0;
+      }
     }
-  }
-
+  //}
+  
   begin_op();
   iput(curproc->cwd);
   end_op();
@@ -287,8 +292,11 @@ wait(void)
       if(p->state == ZOMBIE){
         // Found one.
         pid = p->pid;
-        kfree(p->kstack);
-        p->kstack = 0;
+        *(p->numberOfThreads) = *(p->numberOfThreads) - 1;
+        if(*(p->numberOfThreads) == 1){
+          kfree(p->kstack);
+          p->kstack = 0;
+        }
         freevm(p->pgdir);
         p->pid = 0;
         p->parent = 0;
@@ -536,5 +544,49 @@ procdump(void)
 int
 clone(void *stack, int size)
 {
-  return size;
+  int pid;
+  struct proc *np;
+  struct proc *curproc = myproc();
+
+  // Allocate process.
+  if((np = allocproc()) == 0){
+    return -1;
+  }
+
+  // Copy process state from proc.
+  if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
+    kfree(np->kstack);
+    //child kstack points to user created stack
+    np->kstack = (char*)stack;
+    np->state = UNUSED;
+    return -1;
+  }
+  np->sz = size;
+  np->parent = curproc;
+  *np->tf = *curproc->tf;
+  
+  //*curproc->numberOfThreads = *curproc->numberOfThreads+1;
+  //np->numberOfThreads = curproc->numberOfThreads;
+  
+  // Clear %eax so that fork returns 0 in the child.
+  np->tf->eax = 0;
+  
+  int i;
+  for(i = 0; i < NOFILE; i++)
+    if(curproc->ofile[i])
+      np->ofile[i] = curproc->ofile[i];
+  
+  np->cwd = idup(curproc->cwd);
+
+  safestrcpy(np->name, curproc->name, sizeof(curproc->name));
+
+  pid = np->pid;
+
+  acquire(&ptable.lock);
+
+  np->state = RUNNABLE;
+
+  release(&ptable.lock);
+
+  return pid;
 }
