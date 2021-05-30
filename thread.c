@@ -37,7 +37,7 @@ lock_acquire(lock_t *lt)
 int
 lock_release(lock_t* lt)
 {  
-    //releases lock
+    //releases lock, Reference from spinlock.c and x86.h def.
     xchg(&lt->locked, 0);
 }
 
