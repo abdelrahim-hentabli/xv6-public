@@ -552,7 +552,9 @@ clone(void *stack, int size)
   if((np = allocproc()) == 0){
     return -1;
   }
-
+  // Probably dont need this copy state since we are sharing the
+  // space with the parent thread
+  /*
   // Copy process state from proc.
   if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
     kfree(np->kstack);
@@ -561,16 +563,36 @@ clone(void *stack, int size)
     np->state = UNUSED;
     return -1;
   }
+  
   np->sz = size;
   np->parent = curproc;
   *np->tf = *curproc->tf;
+  */
+  np->sz = curproc->sz;
+  np->parent = curproc;
+  *np->tf = *curproc->tf;
+
+  //shared mememory
+  np->pgdir = curproc->pgdir;
   
   //*curproc->numberOfThreads = *curproc->numberOfThreads+1;
   //np->numberOfThreads = curproc->numberOfThreads;
-  
+
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
   
+  //creating memory
+  //ebp = stack pointer (pointer to the front of the stack) 
+  //esp = frame pointer (pointer where the stack split)
+  void* startLoc = (void*)curproc->tf->ebp + 16;
+  void* endLoc = (void*)curproc->tf->esp;
+  uint currSize = (uint)(startLoc - endLoc);
+
+  //allocating the stack size and re pointing ebp and esp
+  //for cloned process
+  np->tf->ebp = (uint)(stack - 16);
+  np->tf->esp = (uint)(stack - currSize);
+
   int i;
   for(i = 0; i < NOFILE; i++)
     if(curproc->ofile[i])
