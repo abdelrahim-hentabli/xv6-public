@@ -547,6 +547,7 @@ clone(void *stack, int size)
   int pid;
   struct proc *np;
   struct proc *curproc = myproc();
+  cprintf("allocate process\n");
 
   // Allocate process.
   if((np = allocproc()) == 0){
@@ -568,6 +569,7 @@ clone(void *stack, int size)
   np->parent = curproc;
   *np->tf = *curproc->tf;
   */
+  cprintf("thread copy parent data\n");
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
@@ -581,6 +583,7 @@ clone(void *stack, int size)
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
   
+  
   //creating memory
   //ebp = stack pointer (pointer to the front of the stack) 
   //esp = frame pointer (pointer where the stack split)
@@ -592,6 +595,7 @@ clone(void *stack, int size)
   //for cloned process
   np->tf->ebp = (uint)(stack - 16);
   np->tf->esp = (uint)(stack - currSize);
+  
 
   int i;
   for(i = 0; i < NOFILE; i++)
@@ -609,6 +613,9 @@ clone(void *stack, int size)
   np->state = RUNNABLE;
 
   release(&ptable.lock);
+
+  while(1)
+    ;
 
   return pid;
 }

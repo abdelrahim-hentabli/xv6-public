@@ -1,15 +1,15 @@
-#include "thread.h"
-#include "fcntl.h"
-#include "x86.h"
-#include "mmu.h"
 #include "types.h"
 #include "stat.h"
+#include "fcntl.h"
 #include "user.h"
+#include "x86.h"
+#include "mmu.h"
+#include "thread.h"
 
 struct lock_t lock;
 
 //initialize lock to 0(open). Reference from spinlock.c
-int
+void
 lock_init(struct lock_t *lt)
 {
     lt->locked = 0;
@@ -28,16 +28,16 @@ thread_create(void *(*start_routine)(void*), void *arg)
     return tid;
 }
 
-int
-lock_acquire(lock_t *lt)
+void
+lock_acquire(struct lock_t *lt)
 {
     //The xchg is atomic. Reference from spinlock.c
     while(xchg(&lt->locked, 1) != 0)
         ;    
 }
 
-int
-lock_release(lock_t *lt)
+void
+lock_release(struct lock_t *lt)
 {  
     //Releases lock using xchg, Reference from spinlock.c and x86.h def.
     xchg(&lt->locked, 0);

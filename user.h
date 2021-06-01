@@ -1,5 +1,6 @@
 struct stat;
 struct rtcdate;
+struct lock_t;
 
 // system calls
 int fork(void);
@@ -38,3 +39,10 @@ void* memset(void*, int, uint);
 void* malloc(uint);
 void free(void*);
 int atoi(const char*);
+
+// thread.c
+void lock_init(struct lock_t *);
+int thread_create(void *(*start_routine)(void*), void *arg);
+void lock_acquire(struct lock_t *);
+void lock_release(struct lock_t*);
+void thread_join();
