@@ -6,8 +6,6 @@
 #include "mmu.h"
 #include "thread.h"
 
-struct lock_t lock;
-
 //initialize lock to 0(open). Reference from spinlock.c
 void
 lock_init(struct lock_t *lt)
@@ -21,10 +19,13 @@ thread_create(void *(*start_routine)(void*), void *arg)
     // uses clone to create threads, allocate size of stack* using
     // malloc. Get thread id from clone call passing in stack* and
     // 1024 as the size. If tid == 0 then return passed in arguments.
-    void *stack = malloc(1024);
-    int tid = clone(stack, 1024);
-    if(!tid)
+    void *stack = malloc(PGSIZE);
+    int tid = clone(stack, PGSIZE);
+    if(!tid){
         (*start_routine)(arg);
+        free(stack);
+        exit();
+    }
     return tid;
 }
 

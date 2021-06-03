@@ -544,78 +544,53 @@ procdump(void)
 int
 clone(void *stack, int size)
 {
-  int pid;
-  struct proc *np;
-  struct proc *curproc = myproc();
-  cprintf("allocate process\n");
+  int i, pid;
+	struct proc *np, *proc;
+  proc = myproc();
+	// Allocate process
 
-  // Allocate process.
-  if((np = allocproc()) == 0){
-    return -1;
-  }
-  // Probably dont need this copy state since we are sharing the
-  // space with the parent thread
-  /*
-  // Copy process state from proc.
-  if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
-    kfree(np->kstack);
-    //child kstack points to user created stack
-    np->kstack = (char*)stack;
-    np->state = UNUSED;
-    return -1;
-  }
-  
-  np->sz = size;
-  np->parent = curproc;
-  *np->tf = *curproc->tf;
-  */
-  cprintf("thread copy parent data\n");
-  np->sz = curproc->sz;
-  np->parent = curproc;
-  *np->tf = *curproc->tf;
+	if((np=allocproc())==0)
+		return -1;
+	
+	//Copy process state from p. Child and parent needs to share same address space.
+	np->pgdir = proc->pgdir;
+	np->sz = proc->sz;
+	np->parent = proc;
 
-  //shared mememory
-  np->pgdir = curproc->pgdir;
-  
-  //*curproc->numberOfThreads = *curproc->numberOfThreads+1;
-  //np->numberOfThreads = curproc->numberOfThreads;
+	
+	*np->tf = *proc->tf;
+	//base pointer holds a copy of old %ebp which is the top of proc's stack, we want to know 
+	//how much we need to clone so we calculate how many far apart is current parent esp 
+	//and old base pointer to get all the variables of parent
+	int clone_size = *(int*)proc->tf->ebp - proc->tf->esp;
+	
+//	cprintf("clone_size: %d\n", clone_size);
+	//need to adjust reference to the stack frame as well
+	int delta_ebp = *(int*)proc->tf->ebp - proc->tf->ebp;
+	
+	//new stack pointer needs to point to top of our new stack 
+	//to make sure new child is running on this stack when we return
+	np->tf->esp = (int)stack + size - clone_size;
+	np->tf->ebp = (int)stack + size - delta_ebp;
+	
+	memmove((void*) np->tf->esp, (const void*) proc->tf->esp, clone_size);
 
-  // Clear %eax so that fork returns 0 in the child.
-  np->tf->eax = 0;
-  
-  
-  //creating memory
-  //ebp = stack pointer (pointer to the front of the stack) 
-  //esp = frame pointer (pointer where the stack split)
-  void* startLoc = (void*)curproc->tf->ebp + 16;
-  void* endLoc = (void*)curproc->tf->esp;
-  uint currSize = (uint)(startLoc - endLoc);
+	//Force the return for child to be 0
+	np->tf->eax = 0;
+	
+	for(i =0 ; i<NOFILE; i++)
+	{
+		if(proc->ofile[i])
+			np->ofile[i] = proc->ofile[i]; //do not duplicate file descriptors
+	}
+	np->cwd = idup(proc->cwd);
 
-  //allocating the stack size and re pointing ebp and esp
-  //for cloned process
-  np->tf->ebp = (uint)(stack - 16);
-  np->tf->esp = (uint)(stack - currSize);
-  
+	safestrcpy(np->name, proc->name, sizeof(proc->name));
+	pid = np->pid;
+	
+	acquire(&ptable.lock);
+	np->state = RUNNABLE;
+	release(&ptable.lock);
 
-  int i;
-  for(i = 0; i < NOFILE; i++)
-    if(curproc->ofile[i])
-      np->ofile[i] = curproc->ofile[i];
-  
-  np->cwd = idup(curproc->cwd);
-
-  safestrcpy(np->name, curproc->name, sizeof(curproc->name));
-
-  pid = np->pid;
-
-  acquire(&ptable.lock);
-
-  np->state = RUNNABLE;
-
-  release(&ptable.lock);
-
-  while(1)
-    ;
-
-  return pid;
+	return pid;
 }
