@@ -116,14 +116,10 @@ int main(int argc, char *argv[])
 		thread_create((void*)passFrisbee,(void*)t);
 		// printf(0,"rc = %d\n", rc);
 	}
-    while(1)
-        ;
 	for(i = 0; i < numThreads; i++)
 	{
-		wait();
-	}	
-	printf(0,"Simulation of frisbee game has finished, %d rounds were played in total!\n", currPass-1);
-    while(1)
-        ;
+        thread_join();
+	}
+	printf(0,"Frisbee complete: %d rounds were played.\n", currPass-1);
 	exit();	
 }

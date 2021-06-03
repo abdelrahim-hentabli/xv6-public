@@ -237,15 +237,17 @@ exit(void)
 
   // Close all open files.
   
-  //*(curproc->numberOfThreads) = *(curproc->numberOfThreads) - 1;
-  //if(*(curproc->numberOfThreads) == 0){
-    for(fd = 0; fd < NOFILE; fd++){
-      if(curproc->ofile[fd]){
+  if(curproc->pgdir  != curproc->parent->pgdir) //cs202 frisbee 
+  {
+    for(fd = 0; fd < NOFILE; fd++)
+    {
+      if(curproc->ofile[fd])
+      {
         fileclose(curproc->ofile[fd]);
         curproc->ofile[fd] = 0;
       }
     }
-  //}
+  }
   
   begin_op();
   iput(curproc->cwd);
@@ -292,12 +294,10 @@ wait(void)
       if(p->state == ZOMBIE){
         // Found one.
         pid = p->pid;
-        *(p->numberOfThreads) = *(p->numberOfThreads) - 1;
-        if(*(p->numberOfThreads) == 1){
-          kfree(p->kstack);
-          p->kstack = 0;
-        }
-        freevm(p->pgdir);
+        kfree(p->kstack);
+        p->kstack = 0;
+        if(p->pgdir != p->parent->pgdir) //cs202 frisbee
+          freevm(p->pgdir);	//only free address space if parent
         p->pid = 0;
         p->parent = 0;
         p->name[0] = 0;
@@ -552,6 +552,7 @@ clone(void *stack, int size)
 	if((np=allocproc())==0)
 		return -1;
 	
+  //CODE WE NEED TO UNDERSTAND
 	//Copy process state from p. Child and parent needs to share same address space.
 	np->pgdir = proc->pgdir;
 	np->sz = proc->sz;
@@ -574,6 +575,7 @@ clone(void *stack, int size)
 	np->tf->ebp = (int)stack + size - delta_ebp;
 	
 	memmove((void*) np->tf->esp, (const void*) proc->tf->esp, clone_size);
+  //END OF CODE
 
 	//Force the return for child to be 0
 	np->tf->eax = 0;
@@ -583,14 +585,18 @@ clone(void *stack, int size)
 		if(proc->ofile[i])
 			np->ofile[i] = proc->ofile[i]; //do not duplicate file descriptors
 	}
-	np->cwd = idup(proc->cwd);
+	
+  np->cwd = idup(proc->cwd);
 
 	safestrcpy(np->name, proc->name, sizeof(proc->name));
-	pid = np->pid;
+	
+  pid = np->pid;
 	
 	acquire(&ptable.lock);
+
 	np->state = RUNNABLE;
-	release(&ptable.lock);
+	
+  release(&ptable.lock);
 
 	return pid;
 }
