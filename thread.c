@@ -18,7 +18,7 @@ thread_create(void *(*start_routine)(void*), void *arg)
 {
     // uses clone to create threads, allocate size of stack* using
     // malloc. Get thread id from clone call passing in stack* and
-    // 1024 as the size. If tid == 0 then return passed in arguments.
+    // PGSIZE as the size. If tid == 0 then return passed in arguments.
     void *stack = malloc(PGSIZE);
     int tid = clone(stack, PGSIZE);
     if(!tid){
