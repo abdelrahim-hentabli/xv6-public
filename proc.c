@@ -297,7 +297,7 @@ wait(void)
         kfree(p->kstack);
         p->kstack = 0;
         if(p->pgdir != p->parent->pgdir) //cs202 frisbee
-          freevm(p->pgdir);	//only free address space if parent
+          freevm(p->pgdir);	//only free address space if not parent
         p->pid = 0;
         p->parent = 0;
         p->name[0] = 0;
@@ -596,7 +596,7 @@ clone(void *stack, int size)
 	np->tf->ebp = (int)stack + size - ref_ebp;
 	
   //update pointers to connect to table
-	memmove((void*) np->tf->esp, (const void*) curproc->tf->esp, curStackSize);
+	memmove((void*) np->tf->esp, (void*) curproc->tf->esp, curStackSize);
 
 	// Clear %eax so that fork returns 0 in the child.
 	np->tf->eax = 0;
