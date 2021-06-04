@@ -237,7 +237,7 @@ exit(void)
 
   // Close all open files.
   
-  if(curproc->pgdir  != curproc->parent->pgdir) //cs202 frisbee 
+  if(curproc->pgdir  != curproc->parent->pgdir) //cs202 frisbee
   {
     for(fd = 0; fd < NOFILE; fd++)
     {
@@ -552,7 +552,6 @@ clone(void *stack, int size)
 	if((np=allocproc())==0)
 		return -1;
   
-  //CODE WE NEED TO UNDERSTAND
 	//Copy process state from proc. 
   //Child and parent needs to share same address space.
 	np->sz = curproc->sz;
