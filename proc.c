@@ -583,20 +583,20 @@ clone(void *stack, int size)
   //current size of the stack frame 
   int start = *(int*)curproc->tf->ebp;
   int end = curproc->tf->esp;
-	int cloneSize = start - end;
-	cprintf("cloneSize: %d\n", cloneSize);
+	int curStackSize = start - end;
+	// cprintf("curStackSize: %d\n", curStackSize);
 
 	//adjust int reference stack frame ebp
 	int ref_ebp = *(int*)curproc->tf->ebp - curproc->tf->ebp;
-  cprintf("%d - %d = %d\n",*(int*)curproc->tf->ebp, curproc->tf->ebp,ref_ebp);
+  // cprintf("%d - %d = %d\n",*(int*)curproc->tf->ebp, curproc->tf->ebp,ref_ebp);
 	
   //update child pointers to so it points to the top of the
   //new calculated stack, ensure that child is running on this new stack
-	np->tf->esp = (int)stack + size - cloneSize;
+	np->tf->esp = (int)stack + size - curStackSize;
 	np->tf->ebp = (int)stack + size - ref_ebp;
 	
   //update pointers to connect to table
-	memmove((void*) np->tf->esp, (const void*) curproc->tf->esp, cloneSize);
+	memmove((void*) np->tf->esp, (const void*) curproc->tf->esp, curStackSize);
 
 	// Clear %eax so that fork returns 0 in the child.
 	np->tf->eax = 0;
